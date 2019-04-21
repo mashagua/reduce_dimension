@@ -3,15 +3,15 @@
 # @time      :2019/4/11 20:52
 # @File      :pca.py
 # @Software  :PyCharm
-from sklearn import manifold, datasets, decomposition, discriminant_analysis
+
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
-
+from sklearn import manifold, datasets, decomposition, discriminant_analysis
 import matplotlib.pyplot as plt
-from keras.datasets import mnist
 import numpy as np
-import matplotlib
 from matplotlib import offsetbox
+# from keras.datasets import mnist
+#  import matplotlib
 # matplotlib.use('agg')
 # (x_train, y_train), (x_test, y_test) = mnist.load_data()
 # input_shape = x_train.shape[1:]
@@ -55,6 +55,41 @@ for i, mean_vec in enumerate(mean_vectors):
     overall_mean = overall_mean.reshape(64, 1)  # make column vector
     S_B += n * (mean_vec - overall_mean).dot((mean_vec - overall_mean).T)
 print('between-class Scatter Matrix:\n', S_B)
+
+#Within-class scatter matrix
+S_W = np.zeros((64, 64))
+for cl, mv in zip(range(0, 10), mean_vectors):
+    # scatter matrix for every class
+    class_sc_mat = np.zeros((64, 64))
+    for row in x[y == cl]:
+        row, mv = row.reshape(64, 1), mv.reshape(64, 1)  # make column vectors
+        class_sc_mat += (row - mv).dot((row - mv).T)
+    S_W += class_sc_mat                             # sum class scatter matrices
+print('within-class Scatter Matrix:\n', S_W)
+#step3 Solving the generalized eigenvalue problem for the matrix
+eig_vals, eig_vecs = np.linalg.eig(np.linalg.inv(S_W).dot(S_B))
+
+for i in range(len(eig_vals)):
+    eigvec_sc = eig_vecs[:, i].reshape(64, 1)
+    print('\nEigenvector {}: \n{}'.format(i + 1, eigvec_sc.real))
+    print('Eigenvalue {:}: {:.2e}'.format(i + 1, eig_vals[i].real))
+
+#step4 sort the enginer values
+eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:,i]) for i in range(len(eig_vals))]
+# Sort the (eigenvalue, eigenvector) tuples from high to low
+eig_pairs = sorted(eig_pairs, key=lambda k: k[0], reverse=True)
+# Visually confirm that the list is correctly sorted by decreasing eigenvalues
+print('Eigenvalues in decreasing order:\n')
+for i in eig_pairs:
+    print(i[0])
+
+print('Variance explained:\n')
+eigv_sum = sum(eig_vals)
+for i,j in enumerate(eig_pairs):
+    print('eigenvalue {0:}: {1:.2%}'.format(i+1, (j[0]/eigv_sum).real))
+#step5:get the matrix
+W = np.hstack((eig_pairs[0][1].reshape(4,1), eig_pairs[1][1].reshape(4,1)))
+print('Matrix W:\n', W.real)
 
 
 
